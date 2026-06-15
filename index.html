@@ -7,7 +7,7 @@
 
 
 <!-- PWA -->
-<meta name="apple-mobile-web-app-capable" content="4.89">
+<meta name="apple-mobile-web-app-capable" content="4.93">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
 <meta name="app-version" content="3.4">
@@ -78,7 +78,6 @@ body::before { display: none; }
 .btn-secondary { background: rgba(255,149,0,0.1); color: var(--accent); }
 .btn-ghost { background: rgba(0,0,0,0.06); color: var(--text3); font-size: 13px; }
 
-.next-card { padding: 14px 16px; }
 .next-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .next-label { font-size: 15px; font-weight: 600; }
 .next-count { font-size: 15px; font-weight: 700; color: var(--accent); }
@@ -653,7 +652,13 @@ body::before { display: none; }
 
   <div class="page-header">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div id="headerDate" style="font-size:19px;font-weight:700;letter-spacing:-0.3px;color:var(--text);line-height:1.1;"></div>
+      <div style="display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showProfileScreen()">
+        <div id="headerAvatar" style="width:42px;height:42px;border-radius:50%;background:#FFE5CC;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:transform 0.15s;" ontouchstart="this.style.transform='scale(0.93)'" ontouchend="this.style.transform=''">👤</div>
+        <div>
+          <div id="headerProfileName" style="font-size:12px;font-weight:600;color:var(--text3);line-height:1;margin-bottom:3px;"></div>
+          <div id="headerDate" style="font-size:19px;font-weight:700;letter-spacing:-0.3px;color:var(--text);line-height:1.1;"></div>
+        </div>
+      </div>
       <div id="syncStatus" style="display:inline-flex;align-items:center;color:#C7C7CC;"></div>
     </div>
   </div>
@@ -670,14 +675,6 @@ body::before { display: none; }
       <button class="ios-btn btn-secondary" onclick="removeOneStar()">− Убрать</button>
       <button class="ios-btn btn-primary" style="background:var(--purple);" onclick="openSpendModal()">🎁 Потратить</button>
     </div>
-  </div>
-
-  <div class="card next-card">
-    <div class="next-row">
-      <div class="next-label" id="nextLabel">До следующей награды</div>
-      <div class="next-count" id="nextCount"></div>
-    </div>
-    <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
   </div>
 
   <!-- 2. Задания -->
@@ -770,7 +767,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v4.89</div>
+        <div class="settings-desc">v4.93</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1316,30 +1313,33 @@ body::before { display: none; }
     const local = localStorage.getItem('profilesMeta');
     if (local) try { profiles = JSON.parse(local); } catch(e) {}
 
-    // 3. Wait for Firebase SDK (up to 10 seconds)
-    let waited = 0;
-    while (!window._fbSdkReady && waited < 100) {
-      await new Promise(r => setTimeout(r, 100));
-      waited++;
+    // 3. If no profiles in localStorage - show embedded defaults IMMEDIATELY
+    if (Object.keys(profiles).length === 0) {
+      _createDefaultProfiles();
     }
 
-    // 4. Load from Firebase (source of truth)
+    // 4. Render immediately - don't wait for Firebase
+    doRender();
+
+    // 5. Load from Firebase in background and refresh if needed
     try {
       if (typeof window._fbLoadProfiles === 'function') {
         const fb = await Promise.race([
           window._fbLoadProfiles(),
-          new Promise((_, rej) => setTimeout(() => rej('timeout'), 8000))
+          new Promise((_, rej) => setTimeout(() => rej('timeout'), 5000))
         ]);
         if (fb && Object.keys(fb).length > 0) {
           profiles = fb;
           localStorage.setItem('profilesMeta', JSON.stringify(profiles));
+          doRender(); // refresh with Firebase data
         }
       }
     } catch(e) { console.log('FB load error:', e); }
 
-    // If still empty - create default profiles automatically
-    if (Object.keys(profiles).length === 0) {
-      // Create Папа, Мама, Давид automatically
+    // 6. Render already done above
+  }
+
+  function _createDefaultProfiles() {
       const davidTasks = [
         {icon:'🚶',name:'Прогулка',stars:1,oncePerDay:true,allowedDays:[]},
         {icon:'📝',name:'Обучение 30мин',stars:2,oncePerDay:true,allowedDays:[]},
@@ -1349,56 +1349,42 @@ body::before { display: none; }
         {icon:'🐾',name:'Убрать за Луной',stars:1,oncePerDay:false,allowedDays:[]},
       ];
       const davidRewards = [
-        {icon:'🎁',name:'Kinder / до 100 грн',tier:4,color:'t1'},
-        {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t2'},
-        {icon:'🎁',name:'Kinder - > 100',tier:5,color:'t2'},
-        {icon:'☕',name:'Угостить родителей кофе и скушать тортик',tier:10,color:'t3'},
+        {icon:'🎁',name:'Kinder / до 100 грн',tier:4,color:'t5'},
+        {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t10'},
+        {icon:'🎁',name:'Kinder - > 100',tier:5,color:'t20'},
+        {icon:'☕',name:'Угостить родителей кофе и скушать тортик',tier:10,color:'t30'},
+        {icon:'🎮',name:'PlayStation 30 мин',tier:20,color:'t40'},
+        {icon:'🏆',name:'Игрушка до 300 грн',tier:20,color:'t60'},
+        {icon:'❓',name:'Давид выбирает сам',tier:30,color:'t60'},
+        {icon:'🤸',name:'Билет в Батут-парк',tier:40,color:'t60'},
+        {icon:'🎁',name:'Игрушка до 800 грн',tier:40,color:'t60'},
+        {icon:'🧱',name:'Большой конструктор',tier:60,color:'t60'},
       ];
       const papaTasks = [
         {icon:'🚶',name:'Прогулка',stars:1,oncePerDay:false,allowedDays:[]},
         {icon:'🏋️',name:'Тренировка',stars:2,oncePerDay:true,allowedDays:[]},
       ];
       const papaRewards = [
-        {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t2'},
-        {icon:'☕',name:'Кофе + торт с родителями',tier:10,color:'t3'},
-        {icon:'🎮',name:'PlayStation 30 мин / до 300 грн',tier:20,color:'t4'},
+        {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t5'},
+        {icon:'☕',name:'Кофе + торт с родителями',tier:10,color:'t10'},
+        {icon:'🎮',name:'PlayStation 30 мин / до 300 грн',tier:20,color:'t20'},
       ];
       const defaults = [
-        { id: 'p_papa',  name: 'Папа',  avatar: '👨', stars: 18, tasks: papaTasks,  rewards: papaRewards },
-        { id: 'p_david', name: 'Давид', avatar: '👦', stars: 30, tasks: davidTasks, rewards: davidRewards },
-        { id: 'p_mama',  name: 'Мама',  avatar: '👩', stars: 2,
-          tasks: [
-            {icon:'🚶',name:'Прогулка',stars:1,oncePerDay:false,allowedDays:[]},
-            {icon:'🏋️',name:'Тренировка',stars:2,oncePerDay:true,allowedDays:[]},
-          ],
-          rewards: [
-            {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t2'},
-            {icon:'☕',name:'Кофе + торт с родителями',tier:10,color:'t3'},
-            {icon:'🎮',name:'PlayStation 30 мин / до 300 грн',tier:20,color:'t4'},
-          ]
+        { id: 'p_папа',  name: 'Папа',  avatar: '👨', stars: 18, tasks: papaTasks, rewards: papaRewards },
+        { id: 'p_давид', name: 'Давид', avatar: '👦', stars: 40, tasks: davidTasks, rewards: davidRewards },
+        { id: 'p_мама',  name: 'Мама',  avatar: '👩', stars: 2,
+          tasks: [{icon:'🚶',name:'Прогулка',stars:1,oncePerDay:false,allowedDays:[]},{icon:'🏋️',name:'Тренировка',stars:2,oncePerDay:true,allowedDays:[]}],
+          rewards: [{icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t5'},{icon:'☕',name:'Кофе + торт с родителями',tier:10,color:'t10'},{icon:'🎮',name:'PlayStation 30 мин / до 300 грн',tier:20,color:'t20'}]
         },
       ];
       for (const d of defaults) {
         profiles[d.id] = { name: d.name, avatar: d.avatar };
-        const data = {
-          stars: d.stars, history: [],
-          tasks: d.tasks,
-          rewards: d.rewards,
-          settings: {oncePerDay: false}
-        };
+        const data = { stars: d.stars, history: [], tasks: d.tasks, rewards: d.rewards, settings: {oncePerDay:false} };
         localStorage.setItem('profile_' + d.id, JSON.stringify(data));
-        if (typeof window._fbSaveProfile === 'function') {
-          window._fbSaveProfile(d.id, data);
-        }
+        if (typeof window._fbSaveProfile === 'function') window._fbSaveProfile(d.id, data);
       }
-      if (typeof window._fbSaveProfileMeta === 'function') {
-        window._fbSaveProfileMeta(profiles);
-      }
+      if (typeof window._fbSaveProfileMeta === 'function') window._fbSaveProfileMeta(profiles);
       localStorage.setItem('profilesMeta', JSON.stringify(profiles));
-    }
-
-    // 6. Render
-    doRender();
   }
 
   function selectProfile(id) {
@@ -1417,8 +1403,19 @@ body::before { display: none; }
     // Update settings label
     const lbl = document.getElementById('currentProfileLabel');
     if (lbl) lbl.textContent = `${p.avatar||'👤'} ${p.name}`;
-    // Update page title
-    const hd = document.getElementById('headerDate');
+
+    // Update header avatar + name
+    const headerAv = document.getElementById('headerAvatar');
+    const headerName = document.getElementById('headerProfileName');
+    if (headerAv) {
+      if (p.photo) {
+        headerAv.innerHTML = `<img src="${p.photo}" style="width:42px;height:42px;object-fit:cover;border-radius:50%;">`;
+      } else {
+        headerAv.textContent = p.avatar || '👤';
+      }
+    }
+    if (headerName) headerName.textContent = p.name;
+
     // Connect Firebase to this profile
     if (typeof window._fbSetProfile === 'function') {
       window._fbSetProfile(id);
@@ -1734,7 +1731,8 @@ body::before { display: none; }
     const pinParts = ['pin1','pin2','pin3','pin4'].map(id => document.getElementById(id).value.trim());
     const pin = pinParts.every(p=>p) ? pinParts.join('') : null;
 
-    const id = _editingProfileId || ('p_' + Date.now());
+    const nameKey = name.toLowerCase().trim().replace(/\s+/g,'_').replace(/[^\wа-яёА-ЯЁ]/gi,'');
+    const id = _editingProfileId || ('p_' + nameKey);
     profiles[id] = { name, avatar, ...(pin ? {pin} : {}), ...(_currentPhotoB64 ? {photo: _currentPhotoB64} : {}) };
 
     if (typeof window._fbSaveProfileMeta === 'function') {
@@ -1744,6 +1742,17 @@ body::before { display: none; }
     if (_editingProfileId) {
       // Update current profile label
       document.getElementById('currentProfileLabel').textContent = `${avatar} ${name}`;
+      // Update header too
+      const headerAv = document.getElementById('headerAvatar');
+      const headerName = document.getElementById('headerProfileName');
+      if (headerAv) {
+        if (_currentPhotoB64) {
+          headerAv.innerHTML = `<img src="${_currentPhotoB64}" style="width:42px;height:42px;object-fit:cover;border-radius:50%;">`;
+        } else {
+          headerAv.textContent = avatar || '👤';
+        }
+      }
+      if (headerName) headerName.textContent = name;
     } else {
       // Go back to profile screen to show new profile
       showProfileScreen();
@@ -1775,7 +1784,7 @@ body::before { display: none; }
     const oldStarsCount = fbOldData?.stars ?? parseInt(oldStars||'0');
     const doMigrate = confirm(`Найдены старые данные:\n⭐ ${oldStarsCount} звёздочек\n\nСоздать профиль "Давид" с этими данными?`);
     if (!doMigrate) return;
-    const davidId = 'p_david_migrated';
+    const davidId = 'p_давид';
     profiles[davidId] = { name: 'Давид', avatar: '👦' };
     const migData = {
       stars:   fbOldData?.stars    ?? parseInt(oldStars||'0'),
@@ -2246,7 +2255,9 @@ body::before { display: none; }
           </div>
           ${sel.entries.map(e => {
             const t = tasks.find(t => '✅ '+t.name === e.label);
-            return `<div class="day-entry-row">
+            const hIdx = history.indexOf(e);
+            return `<div class="day-entry-row" id="de-${hIdx}">
+              <button onclick="removeDayEntry(${hIdx})" style="width:24px;height:24px;border-radius:50%;background:#FF3B30;color:white;border:none;font-size:15px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(255,59,48,0.3);">−</button>
               <span class="de-icon">${t ? t.icon : '⭐'}</span>
               <span class="de-name">${e.label.replace(/^✅\s*/,'')}</span>
               <span class="de-stars">+${e.delta} ⭐</span>
@@ -2603,19 +2614,23 @@ body::before { display: none; }
   }
 
   function updateProgress(){
+    const labelEl = document.getElementById('nextLabel');
+    const countEl = document.getElementById('nextCount');
+    const fillEl  = document.getElementById('progFill');
+    if (!labelEl && !countEl && !fillEl) return; // elements removed from UI
     const tiers=TIERS();
     const next=tiers.find(t=>t>stars);
     const prev=[...tiers].reverse().find(t=>t<=stars)||0;
     if(!next){
-      document.getElementById('nextLabel').textContent='🏆 Все награды открыты!';
-      document.getElementById('nextCount').textContent='';
-      document.getElementById('progFill').style.width='100%';
+      if(labelEl) labelEl.textContent='🏆 Все награды открыты!';
+      if(countEl) countEl.textContent='';
+      if(fillEl)  fillEl.style.width='100%';
       return;
     }
     const pct=Math.min(100,Math.round(((stars-prev)/(next-prev))*100));
-    document.getElementById('nextLabel').textContent='До следующей награды';
-    document.getElementById('nextCount').textContent=`${stars} / ${next} ⭐`;
-    document.getElementById('progFill').style.width=pct+'%';
+    if(labelEl) labelEl.textContent='До следующей награды';
+    if(countEl) countEl.textContent=`${stars} / ${next} ⭐`;
+    if(fillEl)  fillEl.style.width=pct+'%';
   }
 
   function updateHistory(){
@@ -2703,6 +2718,15 @@ body::before { display: none; }
       stars--;
     }
     save(); updateUI();
+  }
+
+  function removeDayEntry(histIdx) {
+    const entry = history[histIdx];
+    if (!entry) return;
+    stars = Math.max(0, stars - entry.delta);
+    history.splice(histIdx, 1);
+    save(); updateUI();
+    renderWeek();
   }
 
   function buildPastPanel(dateKey, dn, isAddMore=false) {
