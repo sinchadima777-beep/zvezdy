@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="4.94">
+<meta name="app-version" content="4.95">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -767,7 +767,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v4.94</div>
+        <div class="settings-desc">v4.95</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1145,6 +1145,30 @@ body::before { display: none; }
   ];
   const COLOR_CLASSES = ['t5','t10','t20','t30','t40','t60'];
 
+  // Full reference data for David's profile (used for one-time migration + defaults)
+  const DAVID_TASKS_FULL = [
+    {icon:'🚶',name:'Прогулка',stars:1,oncePerDay:true,allowedDays:[]},
+    {icon:'📝',name:'Обучение 30мин',stars:2,oncePerDay:true,allowedDays:[]},
+    {icon:'🤸',name:'Акробатика',stars:2,oncePerDay:true,allowedDays:[]},
+    {icon:'🗑️',name:'Мусор',stars:1,oncePerDay:true,allowedDays:[]},
+    {icon:'🛁',name:'Покупаться с 21-00 до 21-30',stars:1,oncePerDay:true,allowedDays:[]},
+    {icon:'🐾',name:'Убрать за Луной',stars:1,oncePerDay:false,allowedDays:[]},
+  ];
+  const DAVID_REWARDS_FULL = [
+    {icon:'🎁',name:'Kinder / до 100 грн',tier:4,color:'t5'},
+    {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t10'},
+    {icon:'🎁',name:'Kinder - > 100',tier:5,color:'t20'},
+    {icon:'☕',name:'Угостить родителей кофе и скушать тортик',tier:10,color:'t30'},
+    {icon:'🎮',name:'PlayStation 30 мин',tier:20,color:'t40'},
+    {icon:'🏆',name:'Игрушка до 300 грн',tier:20,color:'t60'},
+    {icon:'❓',name:'Давид выбирает сам',tier:30,color:'t60'},
+    {icon:'🤸',name:'Билет в Батут-парк',tier:40,color:'t60'},
+    {icon:'🎁',name:'Игрушка до 800 грн',tier:40,color:'t60'},
+    {icon:'🧱',name:'Большой конструктор',tier:60,color:'t60'},
+  ];
+  const DAVID_FULL_STARS = 40;
+
+
   // Load from localStorage as fallback while Firebase connects
   let stars    = parseInt(localStorage.getItem('david_stars')||'0');
   let history  = JSON.parse(localStorage.getItem('david_history') ||'[]');
@@ -1340,26 +1364,6 @@ body::before { display: none; }
   }
 
   function _createDefaultProfiles() {
-      const davidTasks = [
-        {icon:'🚶',name:'Прогулка',stars:1,oncePerDay:true,allowedDays:[]},
-        {icon:'📝',name:'Обучение 30мин',stars:2,oncePerDay:true,allowedDays:[]},
-        {icon:'🤸',name:'Акробатика',stars:2,oncePerDay:true,allowedDays:[]},
-        {icon:'🗑️',name:'Мусор',stars:1,oncePerDay:true,allowedDays:[]},
-        {icon:'🛁',name:'Покупаться с 21-00 до 21-30',stars:1,oncePerDay:true,allowedDays:[]},
-        {icon:'🐾',name:'Убрать за Луной',stars:1,oncePerDay:false,allowedDays:[]},
-      ];
-      const davidRewards = [
-        {icon:'🎁',name:'Kinder / до 100 грн',tier:4,color:'t5'},
-        {icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t10'},
-        {icon:'🎁',name:'Kinder - > 100',tier:5,color:'t20'},
-        {icon:'☕',name:'Угостить родителей кофе и скушать тортик',tier:10,color:'t30'},
-        {icon:'🎮',name:'PlayStation 30 мин',tier:20,color:'t40'},
-        {icon:'🏆',name:'Игрушка до 300 грн',tier:20,color:'t60'},
-        {icon:'❓',name:'Давид выбирает сам',tier:30,color:'t60'},
-        {icon:'🤸',name:'Билет в Батут-парк',tier:40,color:'t60'},
-        {icon:'🎁',name:'Игрушка до 800 грн',tier:40,color:'t60'},
-        {icon:'🧱',name:'Большой конструктор',tier:60,color:'t60'},
-      ];
       const papaTasks = [
         {icon:'🚶',name:'Прогулка',stars:1,oncePerDay:false,allowedDays:[]},
         {icon:'🏋️',name:'Тренировка',stars:2,oncePerDay:true,allowedDays:[]},
@@ -1371,7 +1375,7 @@ body::before { display: none; }
       ];
       const defaults = [
         { id: 'p_папа',  name: 'Папа',  avatar: '👨', stars: 18, tasks: papaTasks, rewards: papaRewards },
-        { id: 'p_давид', name: 'Давид', avatar: '👦', stars: 40, tasks: davidTasks, rewards: davidRewards },
+        { id: 'p_давид', name: 'Давид', avatar: '👦', stars: DAVID_FULL_STARS, tasks: DAVID_TASKS_FULL, rewards: DAVID_REWARDS_FULL },
         { id: 'p_мама',  name: 'Мама',  avatar: '👩', stars: 2,
           tasks: [{icon:'🚶',name:'Прогулка',stars:1,oncePerDay:false,allowedDays:[]},{icon:'🏋️',name:'Тренировка',stars:2,oncePerDay:true,allowedDays:[]}],
           rewards: [{icon:'🎬',name:'Выбрать фильм до 12+',tier:5,color:'t5'},{icon:'☕',name:'Кофе + торт с родителями',tier:10,color:'t10'},{icon:'🎮',name:'PlayStation 30 мин / до 300 грн',tier:20,color:'t20'}]
@@ -1379,7 +1383,7 @@ body::before { display: none; }
       ];
       for (const d of defaults) {
         profiles[d.id] = { name: d.name, avatar: d.avatar };
-        const data = { stars: d.stars, history: [], tasks: d.tasks, rewards: d.rewards, settings: {oncePerDay:false} };
+        const data = { stars: d.stars, history: [], tasks: JSON.parse(JSON.stringify(d.tasks)), rewards: JSON.parse(JSON.stringify(d.rewards)), settings: {oncePerDay:false} };
         localStorage.setItem('profile_' + d.id, JSON.stringify(data));
         if (typeof window._fbSaveProfile === 'function') window._fbSaveProfile(d.id, data);
       }
@@ -1437,6 +1441,15 @@ body::before { display: none; }
       tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
       rewards = JSON.parse(JSON.stringify(DEFAULT_REWARDS));
       settings = {oncePerDay:false};
+    }
+
+    // One-time fix: restore David's full task/reward list (v4.95)
+    if (id === 'p_давид' && !(settings && settings.fullDataV495)) {
+      stars = DAVID_FULL_STARS;
+      tasks = JSON.parse(JSON.stringify(DAVID_TASKS_FULL));
+      rewards = JSON.parse(JSON.stringify(DAVID_REWARDS_FULL));
+      settings = Object.assign({}, settings, {fullDataV495: true});
+      save();
     }
     hideProfileScreen();
     renderTasks(); renderRewards(); updateUI();
