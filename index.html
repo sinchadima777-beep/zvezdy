@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="5.00">
+<meta name="app-version" content="5.01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -21,7 +21,7 @@
   try {
     if (sessionStorage.getItem('updateChecked')) return;
     sessionStorage.setItem('updateChecked', '1');
-    var currentVersion = '5.00';
+    var currentVersion = '5.01';
     fetch(location.pathname, {cache: 'no-store'})
       .then(function(res){ return res.text(); })
       .then(function(html){
@@ -787,7 +787,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v5.00</div>
+        <div class="settings-desc">v5.01</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1369,32 +1369,38 @@ body::before { display: none; }
     // 1. Show loading indicator
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 20px;"><div style="font-size:40px;margin-bottom:12px;">⏳</div><div style="font-size:15px;color:#8E8E93;font-weight:600;">Загрузка...</div></div>';
 
-    // 2. Try localStorage first
-    const local = localStorage.getItem('profilesMeta');
-    if (local) try { profiles = JSON.parse(local); } catch(e) {}
-
-    // 3. If no profiles in localStorage - show embedded defaults IMMEDIATELY
-    if (Object.keys(profiles).length === 0) {
-      _createDefaultProfiles();
-    }
-
-    // 4. Render immediately - don't wait for Firebase
-    doRender();
-
-    // 5. Load from Firebase in background and refresh if needed
+    // 2. Wait for Firebase SDK to be ready (module loads async), then load profilesMeta from Firebase
+    let fbProfiles = null;
     try {
+      await new Promise((resolve) => {
+        if (window._fbSdkReady) return resolve();
+        window._onFbSdkReady = resolve;
+        setTimeout(resolve, 4000); // max 4s wait for SDK
+      });
       if (typeof window._fbLoadProfiles === 'function') {
-        const fb = await Promise.race([
+        fbProfiles = await Promise.race([
           window._fbLoadProfiles(),
           new Promise((_, rej) => setTimeout(() => rej('timeout'), 5000))
         ]);
-        if (fb && Object.keys(fb).length > 0) {
-          profiles = fb;
-          localStorage.setItem('profilesMeta', JSON.stringify(profiles));
-          doRender(); // refresh with Firebase data
-        }
       }
     } catch(e) { console.log('FB load error:', e); }
+
+    if (fbProfiles && Object.keys(fbProfiles).length > 0) {
+      // Firebase is the source of truth — always use it
+      profiles = fbProfiles;
+      localStorage.setItem('profilesMeta', JSON.stringify(profiles));
+    } else {
+      // Firebase unavailable — fall back to local cache
+      const local = localStorage.getItem('profilesMeta');
+      if (local) try { profiles = JSON.parse(local); } catch(e) {}
+      // Only create defaults if truly nothing exists anywhere
+      if (Object.keys(profiles).length === 0) {
+        _createDefaultProfiles();
+      }
+    }
+
+    // 3. Render
+    doRender();
 
     // 6. One-time fix: restore David's full task/reward list (v4.99)
     // Writes directly to Firebase via _fbForceSaveProfile, independent of profile-select timing.
