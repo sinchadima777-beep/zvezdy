@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="5.01">
+<meta name="app-version" content="5.02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -21,7 +21,7 @@
   try {
     if (sessionStorage.getItem('updateChecked')) return;
     sessionStorage.setItem('updateChecked', '1');
-    var currentVersion = '5.01';
+    var currentVersion = '5.02';
     fetch(location.pathname, {cache: 'no-store'})
       .then(function(res){ return res.text(); })
       .then(function(html){
@@ -787,7 +787,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v5.01</div>
+        <div class="settings-desc">v5.02</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1404,7 +1404,7 @@ body::before { display: none; }
 
     // 6. One-time fix: restore David's full task/reward list (v4.99)
     // Writes directly to Firebase via _fbForceSaveProfile, independent of profile-select timing.
-    if (!localStorage.getItem('davidMigrationV499')) {
+    if (!localStorage.getItem('davidMigrationV502')) {
       try {
         // Find David's profile id dynamically (in case it's not exactly 'p_давид')
         let davidId = null;
@@ -1447,7 +1447,7 @@ body::before { display: none; }
           // Refresh the stars badge shown on David's profile card
           doRender();
         }
-        localStorage.setItem('davidMigrationV499', '1');
+        localStorage.setItem('davidMigrationV502', '1');
       } catch(e) { console.log('David migration error:', e); }
     }
   }
