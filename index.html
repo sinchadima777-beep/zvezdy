@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="5.02">
+<meta name="app-version" content="5.03">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -21,7 +21,7 @@
   try {
     if (sessionStorage.getItem('updateChecked')) return;
     sessionStorage.setItem('updateChecked', '1');
-    var currentVersion = '5.02';
+    var currentVersion = '5.03';
     fetch(location.pathname, {cache: 'no-store'})
       .then(function(res){ return res.text(); })
       .then(function(html){
@@ -787,7 +787,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v5.02</div>
+        <div class="settings-desc">v5.03</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1147,6 +1147,10 @@ body::before { display: none; }
   // Mark Firebase SDK as ready immediately (not waiting for profile selection)
   window._fbSdkReady = true;
   window._fbReady = false; // stays false until profile is selected
+  // Fire any pending callbacks
+  if (Array.isArray(window._onFbSdkReadyQueue)) {
+    window._onFbSdkReadyQueue.forEach(fn => { try { fn(); } catch(e) {} });
+  }
   if (typeof window._onFbSdkReady === 'function') window._onFbSdkReady();
 </script>
 
@@ -1374,7 +1378,8 @@ body::before { display: none; }
     try {
       await new Promise((resolve) => {
         if (window._fbSdkReady) return resolve();
-        window._onFbSdkReady = resolve;
+        window._onFbSdkReadyQueue = window._onFbSdkReadyQueue || [];
+        window._onFbSdkReadyQueue.push(resolve);
         setTimeout(resolve, 4000); // max 4s wait for SDK
       });
       if (typeof window._fbLoadProfiles === 'function') {
@@ -1402,53 +1407,49 @@ body::before { display: none; }
     // 3. Render
     doRender();
 
-    // 6. One-time fix: restore David's full task/reward list (v4.99)
-    // Writes directly to Firebase via _fbForceSaveProfile, independent of profile-select timing.
-    if (!localStorage.getItem('davidMigrationV502')) {
-      try {
-        // Find David's profile id dynamically (in case it's not exactly 'p_давид')
-        let davidId = null;
-        for (const [pid, p] of Object.entries(profiles)) {
-          if (p && p.name === 'Давид') { davidId = pid; break; }
-        }
-
-        if (davidId) {
-          let davidData = { stars: DAVID_FULL_STARS, history: [], tasks: [], rewards: [], settings: {oncePerDay:false} };
-          const cachedRaw = localStorage.getItem('profile_' + davidId);
-          if (cachedRaw) {
+    // One-time fix: write David's correct data (40 stars, 10 rewards) to Firebase
+    if (!localStorage.getItem('davidMigrationV503')) {
+      let davidId = null;
+      for (const [pid, p] of Object.entries(profiles)) {
+        if (p && p.name === 'Давид') { davidId = pid; break; }
+      }
+      if (davidId) {
+        let davidData = { stars: DAVID_FULL_STARS, history: [], tasks: [], rewards: [], settings: {oncePerDay:false, fullDataV495:true} };
+        const cachedRaw = localStorage.getItem('profile_' + davidId);
+        if (cachedRaw) {
+          try {
             const c = JSON.parse(cachedRaw);
-            if (c.history) davidData.history = c.history;
-            if (c.settings) davidData.settings = c.settings;
-          }
-          davidData.tasks   = JSON.parse(JSON.stringify(DAVID_TASKS_FULL));
-          davidData.rewards = JSON.parse(JSON.stringify(DAVID_REWARDS_FULL));
-          davidData.settings = Object.assign({}, davidData.settings, {fullDataV495: true});
+            if (c.history && c.history.length > 0) davidData.history = c.history;
+          } catch(e) {}
+        }
+        davidData.tasks   = JSON.parse(JSON.stringify(DAVID_TASKS_FULL));
+        davidData.rewards = JSON.parse(JSON.stringify(DAVID_REWARDS_FULL));
 
-          localStorage.setItem('profile_' + davidId, JSON.stringify(davidData));
+        // Save to localStorage immediately
+        localStorage.setItem('profile_' + davidId, JSON.stringify(davidData));
+        localStorage.setItem('davidMigrationV503', '1');
 
+        // Wait for Firebase SDK to be ready, then write
+        function doFbWrite() {
           if (typeof window._fbForceSaveProfile === 'function') {
             window._fbForceSaveProfile(davidId, davidData);
-          } else {
-            (function retryFbSave(attempts){
-              if (typeof window._fbForceSaveProfile === 'function') {
-                window._fbForceSaveProfile(davidId, davidData);
-              } else if (attempts < 50) {
-                setTimeout(() => retryFbSave(attempts+1), 100);
-              }
-            })(0);
           }
-
-          // If David's profile is currently open, refresh in-memory state + UI
-          if (currentProfileId === davidId) {
-            stars = davidData.stars; history = davidData.history;
-            tasks = davidData.tasks; rewards = davidData.rewards; settings = davidData.settings;
-            renderTasks(); renderRewards(); updateUI();
-          }
-          // Refresh the stars badge shown on David's profile card
-          doRender();
         }
-        localStorage.setItem('davidMigrationV502', '1');
-      } catch(e) { console.log('David migration error:', e); }
+        if (window._fbSdkReady) {
+          doFbWrite();
+        } else {
+          window._onFbSdkReadyQueue = window._onFbSdkReadyQueue || [];
+          window._onFbSdkReadyQueue.push(doFbWrite);
+        }
+
+        // Also refresh UI if David's profile is open
+        if (currentProfileId === davidId) {
+          stars = davidData.stars; history = davidData.history;
+          tasks = davidData.tasks; rewards = davidData.rewards; settings = davidData.settings;
+          renderTasks(); renderRewards(); updateUI();
+        }
+        doRender();
+      }
     }
   }
 
