@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="5.03">
+<meta name="app-version" content="5.04">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -21,7 +21,7 @@
   try {
     if (sessionStorage.getItem('updateChecked')) return;
     sessionStorage.setItem('updateChecked', '1');
-    var currentVersion = '5.03';
+    var currentVersion = '5.04';
     fetch(location.pathname, {cache: 'no-store'})
       .then(function(res){ return res.text(); })
       .then(function(html){
@@ -86,12 +86,16 @@ body::before { display: none; }
   box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 2px 12px rgba(0,0,0,0.06);
 }
 
-.stars-hero { padding: 20px 20px 16px; }
-.stars-hero-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.sh-label { font-size: 13px; font-weight: 500; color: var(--text3); margin-bottom: 2px; }
-.sh-number { font-size: 56px; font-weight: 700; letter-spacing: -2px; color: var(--accent); line-height: 1; }
-.sh-icon { font-size: 38px; margin-top: 4px; }
+.stars-hero { padding: 20px; background: linear-gradient(135deg, #FF9500 0%, #FF6B00 100%) !important; position: relative; overflow: hidden; }
+.stars-hero::after { content: '⭐'; position: absolute; right: -10px; top: -10px; font-size: 100px; opacity: 0.12; line-height: 1; pointer-events: none; }
+.stars-hero-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; }
+.sh-label { font-size: 11px; color: rgba(255,255,255,0.75); font-weight: 600; letter-spacing: 0.06em; margin-bottom: 4px; }
+.sh-number { font-size: 60px; font-weight: 800; letter-spacing: -2px; color: #fff; line-height: 1; margin-bottom: 16px; }
+.sh-icon { display: none; }
 .btn-row { display: flex; gap: 8px; }
+.btn-row .btn-primary:not([style*="purple"]) { background: rgba(255,255,255,0.25) !important; border: 1.5px solid rgba(255,255,255,0.4) !important; color: #fff !important; }
+.btn-row .btn-secondary { background: rgba(255,255,255,0.15) !important; border: 1.5px solid rgba(255,255,255,0.25) !important; color: #fff !important; }
+.btn-row .btn-primary[style*="purple"] { background: #fff !important; color: #FF6B00 !important; }
 .ios-btn { flex: 1; padding: 11px 8px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity 0.12s, transform 0.1s; font-family: inherit; }
 .ios-btn:active { opacity: 0.65; transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: white; box-shadow: 0 3px 10px rgba(255,149,0,0.35); }
@@ -684,12 +688,8 @@ body::before { display: none; }
   </div>
 
   <div class="card stars-hero">
-    <div class="stars-hero-top">
-      <div>
-        <div class="sh-number" id="countDisplay">0</div>
-      </div>
-      <div class="sh-icon">⭐</div>
-    </div>
+    <div class="sh-label">МОИ ЗВЁЗДЫ</div>
+    <div class="sh-number" id="countDisplay">0</div>
     <div class="btn-row">
       <button class="ios-btn btn-primary" onclick="addStar()">+ Добавить ⭐</button>
       <button class="ios-btn btn-secondary" onclick="removeOneStar()">− Убрать</button>
@@ -707,6 +707,24 @@ body::before { display: none; }
     <button id="taskDoneBtn" onclick="setTaskMode('normal')" style="display:none;padding:5px 12px;border:none;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:rgba(52,199,89,0.12);color:#34C759;">Готово</button>
   </div>
   <div class="tasks-grid" id="tasksGrid"></div>
+
+
+  <!-- 4. Пропуски (билеты на приставку) -->
+  <div id="ticketsSection" class="card" style="padding:16px;margin:0 16px 0;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div id="ticketIcon" style="width:40px;height:40px;background:#E8F5FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🎮</div>
+      <div style="flex:1;">
+        <div id="ticketTitle" style="font-size:15px;font-weight:700;color:var(--text);">Игра в выходные</div>
+        <div id="ticketDesc" style="font-size:12px;color:var(--text3);">Застелить + зубы за 20 мин = 🎫</div>
+      </div>
+      <button onclick="openTicketSettings()" style="font-size:12px;color:#007AFF;background:rgba(0,122,255,0.08);border:none;border-radius:99px;padding:4px 10px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">Изменить</button>
+    </div>
+    <div id="ticketDays" style="display:flex;gap:5px;margin-bottom:12px;"></div>
+    <div style="height:7px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:6px;">
+      <div id="ticketProgressFill" style="height:100%;background:#34C759;border-radius:4px;transition:width 0.4s ease;"></div>
+    </div>
+    <div id="ticketProgressText" style="font-size:12px;color:var(--text3);text-align:center;"></div>
+  </div>
 
   <!-- 3. Награды -->
   <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px;">
@@ -787,7 +805,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v5.03</div>
+        <div class="settings-desc">v5.04</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1538,7 +1556,7 @@ body::before { display: none; }
       settings = {oncePerDay:false};
     }
     hideProfileScreen();
-    renderTasks(); renderRewards(); updateUI();
+    renderTasks(); renderRewards(); updateUI(); renderTickets();
     setSyncStatus('sync');
     // Always stop spinning after 3 seconds max
     setTimeout(() => setSyncStatus('ok'), 3000);
@@ -3009,6 +3027,97 @@ body::before { display: none; }
       wrap.appendChild(p); setTimeout(()=>p.remove(),3500);
     }
   }
+
+  // ═══ TICKETS / ПРОПУСКИ ═══
+  const DAYS_SHORT = ['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  const DAYS_ORDER = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'];
+
+  function getTicketSettings() {
+    const def = { title:'Игра в выходные', desc:'Застелить + зубы за 20 мин = 🎫', icon:'🎮', total:7 };
+    try { return Object.assign({}, def, JSON.parse(localStorage.getItem('ticketSettings_' + currentProfileId) || '{}')); }
+    catch(e) { return def; }
+  }
+
+  function getTicketData() {
+    // Returns object: { weekKey, days: {ПН: bool, ВТ: bool, ...} }
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((day === 0 ? 7 : day) - 1));
+    const weekKey = monday.toISOString().slice(0,10);
+    const stored = localStorage.getItem('tickets_' + currentProfileId + '_' + weekKey);
+    const days = stored ? JSON.parse(stored) : {};
+    return { weekKey, days };
+  }
+
+  function saveTicketData(weekKey, days) {
+    localStorage.setItem('tickets_' + currentProfileId + '_' + weekKey, JSON.stringify(days));
+  }
+
+  function renderTickets() {
+    const container = document.getElementById('ticketDays');
+    const fillEl = document.getElementById('ticketProgressFill');
+    const textEl = document.getElementById('ticketProgressText');
+    const titleEl = document.getElementById('ticketTitle');
+    const descEl = document.getElementById('ticketDesc');
+    const iconEl = document.getElementById('ticketIcon');
+    if (!container) return;
+
+    const s = getTicketSettings();
+    const { weekKey, days } = getTicketData();
+
+    titleEl.textContent = s.title;
+    descEl.textContent = s.desc;
+    iconEl.textContent = s.icon;
+
+    const earned = DAYS_ORDER.filter(d => days[d]).length;
+    const total = s.total;
+
+    container.innerHTML = '';
+    DAYS_ORDER.forEach(dayName => {
+      const got = !!days[dayName];
+      const div = document.createElement('div');
+      div.style.cssText = `flex:1;border-radius:10px;padding:7px 3px;text-align:center;cursor:pointer;transition:all 0.15s;` +
+        (got ? 'background:#1D9E75;' : 'background:var(--bg);border:1.5px dashed #C7C7CC;');
+      div.innerHTML = `<div style="font-size:8px;font-weight:700;color:${got?'#9FE1CB':'#C7C7CC'};">${dayName}</div>` +
+        `<div style="font-size:16px;${got?'':'opacity:0.2'}">🎫</div>` +
+        `<div style="font-size:8px;color:${got?'#9FE1CB':'#C7C7CC'};">${got?'✓':'—'}</div>`;
+      div.onclick = () => {
+        days[dayName] = !days[dayName];
+        saveTicketData(weekKey, days);
+        renderTickets();
+      };
+      container.appendChild(div);
+    });
+
+    const pct = Math.round((earned / total) * 100);
+    fillEl.style.width = pct + '%';
+    const left = total - earned;
+    if (earned === 0) {
+      textEl.textContent = 'Заработай билеты на выходные 🕹️';
+    } else if (left === 0) {
+      textEl.textContent = '🎉 Все билеты заработаны! Отличная неделя!';
+      fillEl.style.background = '#34C759';
+    } else {
+      textEl.textContent = `Ещё ${left} ${left===1?'билет':left<5?'билета':'билетов'} до выходных 🕹️`;
+    }
+  }
+
+  function openTicketSettings() {
+    const s = getTicketSettings();
+    const title = prompt('Название:', s.title);
+    if (title === null) return;
+    const desc = prompt('Описание (условие):', s.desc);
+    if (desc === null) return;
+    const icon = prompt('Иконка (эмодзи):', s.icon);
+    if (icon === null) return;
+    const totalStr = prompt('Кол-во дней (сколько билетов максимум):', String(s.total));
+    if (totalStr === null) return;
+    const total = parseInt(totalStr) || 7;
+    localStorage.setItem('ticketSettings_' + currentProfileId, JSON.stringify({ title, desc, icon, total }));
+    renderTickets();
+  }
+
 
   renderDate();
   loadSettings();
