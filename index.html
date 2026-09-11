@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="5.04">
+<meta name="app-version" content="5.05">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -21,7 +21,7 @@
   try {
     if (sessionStorage.getItem('updateChecked')) return;
     sessionStorage.setItem('updateChecked', '1');
-    var currentVersion = '5.04';
+    var currentVersion = '5.05';
     fetch(location.pathname, {cache: 'no-store'})
       .then(function(res){ return res.text(); })
       .then(function(html){
@@ -805,7 +805,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v5.04</div>
+        <div class="settings-desc">v5.05</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1268,12 +1268,22 @@ body::before { display: none; }
       _fbConnected = true;
       setSyncStatus('ok');
     }
-    // Only update if data differs (avoid echo of own save)
     stars    = data.stars    ?? stars;
     history  = data.history  ?? history;
     tasks    = data.tasks    ?? tasks;
     rewards  = data.rewards  ?? rewards;
     settings = data.settings ?? settings;
+
+    // Restore tickets from Firebase
+    if (data.tickets && currentProfileId) {
+      // Store each week's ticket data
+      Object.entries(data.tickets).forEach(([weekKey, days]) => {
+        localStorage.setItem('tickets_' + currentProfileId + '_' + weekKey, JSON.stringify(days));
+      });
+    }
+    if (data.ticketSettings && currentProfileId) {
+      localStorage.setItem('ticketSettings_' + currentProfileId, JSON.stringify(data.ticketSettings));
+    }
 
     // Sync to localStorage as offline cache
     localStorage.setItem('david_stars',    stars);
@@ -1288,6 +1298,7 @@ body::before { display: none; }
     renderTasks();
     renderRewards();
     updateUI();
+    if (typeof renderTickets === 'function') renderTickets();
     setSyncStatus('ok');
   };
 
@@ -1303,7 +1314,9 @@ body::before { display: none; }
   let _syncTimer = null;
   function save() {
     const pfx = currentProfileId ? 'profile_' + currentProfileId : 'david';
-    const data = { stars, history, tasks, rewards, settings };
+    // Include tickets in saved data
+    const ticketData = getTicketDataForSave();
+    const data = { stars, history, tasks, rewards, settings, tickets: ticketData.tickets, ticketSettings: ticketData.ticketSettings };
     localStorage.setItem(pfx, JSON.stringify(data));
     // Legacy keys for backward compat
     localStorage.setItem('david_stars',    stars);
@@ -3032,6 +3045,20 @@ body::before { display: none; }
   const DAYS_SHORT = ['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
   const DAYS_ORDER = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'];
 
+  function getTicketDataForSave() {
+    // Collect all ticket weeks for this profile to include in Firebase save
+    const ticketSettings = getTicketSettings();
+    const tickets = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('tickets_' + currentProfileId + '_')) {
+        const weekKey = key.replace('tickets_' + currentProfileId + '_', '');
+        try { tickets[weekKey] = JSON.parse(localStorage.getItem(key)); } catch(e) {}
+      }
+    }
+    return { tickets, ticketSettings };
+  }
+
   function getTicketSettings() {
     const def = { title:'Игра в выходные', desc:'Застелить + зубы за 20 мин = 🎫', icon:'🎮', total:7 };
     try { return Object.assign({}, def, JSON.parse(localStorage.getItem('ticketSettings_' + currentProfileId) || '{}')); }
@@ -3052,6 +3079,7 @@ body::before { display: none; }
 
   function saveTicketData(weekKey, days) {
     localStorage.setItem('tickets_' + currentProfileId + '_' + weekKey, JSON.stringify(days));
+    save(); // sync to Firebase
   }
 
   function renderTickets() {
@@ -3115,6 +3143,7 @@ body::before { display: none; }
     if (totalStr === null) return;
     const total = parseInt(totalStr) || 7;
     localStorage.setItem('ticketSettings_' + currentProfileId, JSON.stringify({ title, desc, icon, total }));
+    save(); // sync to Firebase
     renderTickets();
   }
 
