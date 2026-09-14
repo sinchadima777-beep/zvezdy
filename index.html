@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Звёздочки">
-<meta name="app-version" content="5.07">
+<meta name="app-version" content="5.08">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -21,7 +21,7 @@
   try {
     if (sessionStorage.getItem('updateChecked')) return;
     sessionStorage.setItem('updateChecked', '1');
-    var currentVersion = '5.07';
+    var currentVersion = '5.08';
     fetch(location.pathname, {cache: 'no-store'})
       .then(function(res){ return res.text(); })
       .then(function(html){
@@ -821,7 +821,7 @@ body::before { display: none; }
     <div class="settings-row" style="border-bottom:1px solid var(--sep);">
       <div class="settings-info">
         <div class="settings-label">Версия</div>
-        <div class="settings-desc">v5.07</div>
+        <div class="settings-desc">v5.08</div>
       </div>
       <span style="color:var(--text3);font-size:13px;font-weight:600;">Звёздочки Давида</span>
     </div>
@@ -1290,10 +1290,17 @@ body::before { display: none; }
 
     // Restore tickets from Firebase
     if (data.tickets && currentProfileId) {
-      // Store each week's ticket data
-      Object.entries(data.tickets).forEach(([weekKey, days]) => {
-        localStorage.setItem('tickets_' + currentProfileId + '_' + weekKey, JSON.stringify(days));
-      });
+      // Support new fixed key format
+      if (data.tickets['current']) {
+        localStorage.setItem('tickets_current_' + currentProfileId, JSON.stringify(data.tickets['current']));
+      } else {
+        // Legacy: find most recent week key
+        const keys = Object.keys(data.tickets);
+        if (keys.length > 0) {
+          const latest = keys.sort().reverse()[0];
+          localStorage.setItem('tickets_current_' + currentProfileId, JSON.stringify(data.tickets[latest]));
+        }
+      }
     }
     if (data.ticketSettings && currentProfileId) {
       localStorage.setItem('ticketSettings_' + currentProfileId, JSON.stringify(data.ticketSettings));
@@ -3087,19 +3094,14 @@ body::before { display: none; }
   }
 
   function getTicketData() {
-    // Returns object: { weekKey, days: {ПН: bool, ВТ: bool, ...} }
-    const now = new Date();
-    const day = now.getDay(); // 0=Sun
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - ((day === 0 ? 7 : day) - 1));
-    const weekKey = monday.toISOString().slice(0,10);
-    const stored = localStorage.getItem('tickets_' + currentProfileId + '_' + weekKey);
+    // Fixed key — no auto-reset by date. Resets only when user confirms celebration.
+    const stored = localStorage.getItem('tickets_current_' + currentProfileId);
     const days = stored ? JSON.parse(stored) : {};
-    return { weekKey, days };
+    return { weekKey: 'current', days };
   }
 
   function saveTicketData(weekKey, days) {
-    localStorage.setItem('tickets_' + currentProfileId + '_' + weekKey, JSON.stringify(days));
+    localStorage.setItem('tickets_current_' + currentProfileId, JSON.stringify(days));
     save(); // sync to Firebase
   }
 
@@ -3179,11 +3181,8 @@ body::before { display: none; }
   function closeTicketCelebration() {
     const modal = document.getElementById('ticketCelebrationModal');
     if (modal) modal.style.display = 'none';
-    // Reset tickets for new cycle
-    const { weekKey } = getTicketData();
-    // Use a unique new key so old data is preserved but current week resets
-    const resetKey = 'tickets_' + currentProfileId + '_' + weekKey;
-    localStorage.removeItem(resetKey);
+    // Reset tickets — only happens here, not automatically
+    localStorage.removeItem('tickets_current_' + currentProfileId);
     save();
     renderTickets();
   }
